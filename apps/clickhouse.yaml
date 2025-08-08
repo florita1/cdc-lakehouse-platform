@@ -1,0 +1,21 @@
+# apps/clickhouse.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: clickhouse
+  namespace: wal-cdc-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"  # after operator
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: clickhouse
+  source:
+    repoURL: https://github.com/florita1/wal-cdc-platform.git
+    targetRevision: main
+    path: clickhouse
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

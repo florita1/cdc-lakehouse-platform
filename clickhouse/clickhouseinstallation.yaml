@@ -1,0 +1,65 @@
+apiVersion: "clickhouse.altinity.com/v1"
+kind: "ClickHouseInstallation"
+metadata:
+  name: clickhouse
+  namespace: clickhouse
+spec:
+  configuration:
+    users:
+      ingest/password: ingest-pass
+      ingest/profile: "clickhouse_operator"
+      ingest/quota: default
+      ingest/access_management: "1"
+      ingest/networks/ip.1: "::1"
+      ingest/networks/ip.2: "127.0.0.1"
+      ingest/networks/ip.3: "10.0.0.0/8"
+    clusters:
+      - name: clickhouse
+        layout:
+          shardsCount: 1
+          replicasCount: 1
+        templates:
+          podTemplate: default
+        services:
+          - name: clickhouse
+            port: 8123
+            protocol: HTTP
+            template: default
+            spec:
+              type: ClusterIP
+          - name: native
+            port: 9000
+            protocol: TCP
+            template: default
+            spec:
+              type: ClusterIP
+  templates:
+    podTemplates:
+      - name: default
+        spec:
+          containers:
+            - name: clickhouse
+              image: clickhouse/clickhouse-server:24.6
+              resources:
+                requests:
+                  memory: "2Gi"
+                  cpu: "500m"
+                limits:
+                  memory: "4Gi"
+                  cpu: "2"
+              readinessProbe:
+                httpGet:
+                  path: /ping
+                  port: 8123
+                initialDelaySeconds: 30
+                timeoutSeconds: 3
+                periodSeconds: 5
+                failureThreshold: 5
+              livenessProbe:
+                httpGet:
+                  path: /ping
+                  port: 8123
+                initialDelaySeconds: 90
+                timeoutSeconds: 3
+                periodSeconds: 10
+                failureThreshold: 10

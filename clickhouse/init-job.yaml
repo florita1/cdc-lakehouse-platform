@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ch-init-job
+  namespace: clickhouse
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: clickhouse/clickhouse-client:24.6
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -e
+              until clickhouse-client --host native.clickhouse.svc.cluster.local --port 9000 --query "SELECT 1"; do
+                echo 'waiting for ClickHouse...'; sleep 3;
+              done
+              clickhouse-client --host native.clickhouse.svc.cluster.local --port 9000 --multiquery < /init/init.sql
+          volumeMounts:
+            - name: init-sql
+              mountPath: /init
+      volumes:
+        - name: init-sql
+          configMap:
+            name: ch-init-sql

@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: debezium
+  namespace: wal-cdc-argocd
+  annotations:
+    # needs Postgres + Redpanda first
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: debezium
+  source:
+    repoURL: https://github.com/florita1/wal-cdc-platform.git
+    targetRevision: main
+    path: kustomize/debezium
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
