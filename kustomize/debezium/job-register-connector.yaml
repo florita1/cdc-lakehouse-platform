@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: register-debezium-connector
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: registrar
+          image: curlimages/curl:8.8.0
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+          volumeMounts:
+            - name: cfg
+              mountPath: /cfg
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -euo pipefail
+
+              # Wait for Kafka Connect REST to be ready
+              until curl -fsS http://connect.debezium.svc.cluster.local:8083/connectors >/dev/null; do
+                echo "waiting for Kafka Connect..."; sleep 3;
+              done
+
+              # Inject password into connector template
+              sed "s/__PG_PASSWORD__/${POSTGRES_PASSWORD}/g" /cfg/connector.json > /tmp/connector.json
+
+              # If connector exists, update; otherwise create
+              if curl -fsS http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector >/dev/null; then
+                echo "Updating existing connector..."
+                curl -fsS -X PUT -H 'Content-Type: application/json' \
+                  --data-binary @/tmp/connector.json \
+                  http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector/config
+              else
+                echo "Creating connector..."
+                curl -fsS -X POST -H 'Content-Type: application/json' \
+                  --data-binary @/tmp/connector.json \
+                  http://connect.debezium.svc.cluster.local:8083/connectors
+              fi
+
+              echo "Connector registered."
+      volumes:
+        - name: cfg
+          configMap:
+            name: debezium-connector
+            items:
+              - key: connector.json
+                path: connector.json

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connect
+  labels: { app: connect }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: connect }
+  template:
+    metadata:
+      labels: { app: connect }
+    spec:
+      containers:
+        - name: connect
+          image: quay.io/debezium/connect:2.6
+          ports:
+            - containerPort: 8083
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: redpanda.redpanda.svc.cluster.local:9092
+            - name: GROUP_ID
+              value: connect-cluster
+            - name: CONFIG_STORAGE_TOPIC
+              value: connect-configs
+            - name: OFFSET_STORAGE_TOPIC
+              value: connect-offsets
+            - name: STATUS_STORAGE_TOPIC
+              value: connect-status
+            - name: KEY_CONVERTER
+              value: org.apache.kafka.connect.json.JsonConverter
+            - name: VALUE_CONVERTER
+              value: org.apache.kafka.connect.json.JsonConverter
+            - name: REST_ADVERTISED_HOST_NAME
+              valueFrom:
+                fieldRef: { fieldPath: status.podIP }
+            - name: REST_PORT
+              value: "8083"
+            # Debezium already on plugin.path inside this image
+            - name: PLUGIN_PATH
+              value: /kafka/connect,/debezium
+          readinessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 20
+            periodSeconds: 10
