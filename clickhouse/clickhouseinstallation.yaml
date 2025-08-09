@@ -1,5 +1,5 @@
-apiVersion: "clickhouse.altinity.com/v1"
-kind: "ClickHouseInstallation"
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
 metadata:
   name: clickhouse
   namespace: clickhouse
@@ -13,6 +13,7 @@ spec:
       ingest/networks/ip.1: "::1"
       ingest/networks/ip.2: "127.0.0.1"
       ingest/networks/ip.3: "10.0.0.0/8"
+
     clusters:
       - name: clickhouse
         layout:
@@ -22,17 +23,10 @@ spec:
           podTemplate: default
         services:
           - name: clickhouse
-            port: 8123
-            protocol: HTTP
-            template: default
-            spec:
-              type: ClusterIP
+            template: default   # <- now exists
           - name: native
-            port: 9000
-            protocol: TCP
-            template: default
-            spec:
-              type: ClusterIP
+            template: default   # <- now exists
+
   templates:
     podTemplates:
       - name: default
@@ -40,6 +34,11 @@ spec:
           containers:
             - name: clickhouse
               image: clickhouse/clickhouse-server:24.6
+              ports:
+                - name: http
+                  containerPort: 8123
+                - name: tcp
+                  containerPort: 9000
               resources:
                 requests:
                   memory: "2Gi"
@@ -63,3 +62,24 @@ spec:
                 timeoutSeconds: 3
                 periodSeconds: 10
                 failureThreshold: 10
+
+    serviceTemplates:
+      - name: default
+        spec:
+          type: ClusterIP
+          ports:
+            - name: http
+              port: 8123
+              targetPort: 8123
+            - name: tcp
+              port: 9000
+              targetPort: 9000
+
+    volumeClaimTemplates:
+      - name: data
+        reclaimPolicy: Retain
+        spec:
+          accessModes: [ "ReadWriteOnce" ]
+          resources:
+            requests:
+              storage: 20Gi
