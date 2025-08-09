@@ -28,9 +28,6 @@ spec:
             cpu: "200m"
             memory: "512Mi"
 
-        configuration:
-          cluster:
-            default_topic_replications: 1
   syncPolicy:
     automated:
       prune: true
