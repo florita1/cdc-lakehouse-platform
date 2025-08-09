@@ -7,17 +7,20 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
+  source:
+    repoURL: https://altinity.github.io/clickhouse-operator
+    chart: altinity-clickhouse-operator
+    targetRevision: 0.25.3
+    helm:
+      releaseName: clickhouse-operator
+      values: |
+        installCRDs: true
   destination:
     server: https://kubernetes.default.svc
     namespace: clickhouse-operator
-  source:
-    repoURL: https://charts.altinity.com/
-    chart: clickhouse-operator
-    targetRevision: 0.21.x
-    helm:
-      values: |
-        installCRDs: true
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

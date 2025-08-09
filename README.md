@@ -88,3 +88,8 @@ This project simulates a real-time OLAP analytics flow using PostgreSQL WAL-base
 - **Helm chart** for the ingestion service includes configurable mode support and is deployed via Argo CD alongside other components.
 
 > Everything runs inside Kubernetes with GitOps delivery, enabling reproducibility, modular debugging, and real-time insert visibility — whether you're streaming from Postgres or generating synthetic test traffic.
+
+
+helpful commands:
+how to get argocd ui password:
+```wal-cdc-platform % kubectl -n wal-cdc-argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo```
