@@ -6,9 +6,15 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    # (optional) make sure this runs after CHI is reconciled
+    # argocd.argoproj.io/sync-wave: "10"
 spec:
+  activeDeadlineSeconds: 300           # hard stop after 5 minutes
+  backoffLimit: 0                      # don't retry on failure
+  ttlSecondsAfterFinished: 600         # auto-cleanup 10 min later
   template:
     spec:
+      terminationGracePeriodSeconds: 10
       restartPolicy: Never
       containers:
         - name: init
@@ -16,11 +22,19 @@ spec:
           command: ["/bin/sh","-c"]
           args:
             - |
-              set -e
-              until clickhouse-client --host native.clickhouse.svc.cluster.local --port 9000 --query "SELECT 1"; do
-                echo 'waiting for ClickHouse...'; sleep 3;
+              set -euo pipefail
+              CH_HOST="clickhouse.clickhouse.svc.cluster.local"   # <- update if your svc name differs
+              CH_PORT=9000
+              # fail after 300s if CH never becomes reachable
+              END=$((SECONDS+300))
+              until clickhouse-client --host "$CH_HOST" --port "$CH_PORT" --query "SELECT 1" --receive_timeout=3; do
+                if [ "${SECONDS}" -ge "${END}" ]; then
+                  echo "ERROR: Timed out waiting for ClickHouse at ${CH_HOST}:${CH_PORT}"
+                  exit 1
+                fi
+                echo "waiting for ClickHouse..."; sleep 3
               done
-              clickhouse-client --host native.clickhouse.svc.cluster.local --port 9000 --multiquery < /init/init.sql
+              clickhouse-client --host "$CH_HOST" --port "$CH_PORT" --multiquery < /init/init.sql
           volumeMounts:
             - name: init-sql
               mountPath: /init
