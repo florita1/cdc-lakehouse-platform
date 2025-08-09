@@ -18,7 +18,7 @@ spec:
             - containerPort: 8083
           env:
             - name: BOOTSTRAP_SERVERS
-              value: redpanda.redpanda.svc.cluster.local:9092
+              value: redpanda.redpanda.svc.cluster.local:9093
             - name: GROUP_ID
               value: connect-cluster
             - name: CONFIG_STORAGE_TOPIC
