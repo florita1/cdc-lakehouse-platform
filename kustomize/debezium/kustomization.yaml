@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: debezium
 
 resources:
-  - namespace.yaml
   - deployment.yaml
   - service.yaml
   - secret-postgres.yaml
