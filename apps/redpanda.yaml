@@ -6,10 +6,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  project: default
   destination:
-    server: https://kubernetes.default.svc
     namespace: redpanda
+    server: https://kubernetes.default.svc
+  project: default
   source:
     repoURL: https://charts.redpanda.com
     chart: redpanda
@@ -17,6 +17,23 @@ spec:
     helm:
       values: |
         statefulset:
-          replicas: 3
-        tieredStorage:
-          enabled: false
+          replicas: 1
+
+        storage:
+          persistentVolume:
+            enabled: false
+          emptyDir:
+            enabled: true
+
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+
+        configuration:
+          cluster:
+            default_topic_replications: 1
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
