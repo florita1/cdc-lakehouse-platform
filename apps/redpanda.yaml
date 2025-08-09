@@ -12,7 +12,7 @@ spec:
     namespace: redpanda
   source:
     repoURL: https://charts.redpanda.com
-    chart: redpanda-data/redpanda
+    chart: redpanda
     targetRevision: 25.1.1
     helm:
       values: |
