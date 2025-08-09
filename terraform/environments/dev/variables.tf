@@ -13,3 +13,13 @@ variable "tags" {
     Environment = "dev"
   }
 }
+
+variable "postgres_password" {
+  type = string
+  sensitive = true
+}
+
+variable "app_password" {
+  type = string
+  sensitive = true
+}
