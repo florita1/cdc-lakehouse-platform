@@ -12,8 +12,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: postgres
   source:
-    repoURL: oci://registry-1.docker.io/bitnamicharts
-    chart: postgresql
+    repoURL: oci://registry-1.docker.io/bitnamicharts/postgresql
     targetRevision: 16.7.24
     path: .
     helm:
