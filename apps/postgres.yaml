@@ -15,8 +15,8 @@ spec:
     repoURL: oci://registry-1.docker.io/bitnamicharts
     chart: postgresql
     targetRevision: 16.7.24
+    path: .
     helm:
-      oci: true
       values: |
         auth:
           username: app
