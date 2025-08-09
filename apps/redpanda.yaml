@@ -12,8 +12,8 @@ spec:
     namespace: redpanda
   source:
     repoURL: https://charts.redpanda.com
-    chart: redpanda
-    targetRevision: 5.x.x
+    chart: redpanda-data/redpanda
+    targetRevision: 25.1.1
     helm:
       values: |
         statefulset:
