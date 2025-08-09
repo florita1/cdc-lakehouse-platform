@@ -13,7 +13,7 @@ spec:
     namespace: postgres
   source:
     repoURL: https://charts.bitnami.com/bitnami
-    chart: bitnami/postgresql
+    chart: postgresql
     targetRevision: 16.7.21
     helm:
       values: |
