@@ -27,6 +27,12 @@ spec:
           requests:
             cpu: "200m"
             memory: "512Mi"
+        
+        tls:
+          enabled: false
+        external:
+          service:
+            enabled: false
 
   syncPolicy:
     automated:
