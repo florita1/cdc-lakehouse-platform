@@ -16,6 +16,7 @@ spec:
     chart: postgresql
     targetRevision: 16.7.24
     helm:
+      oci: true
       values: |
         auth:
           username: app
