@@ -21,11 +21,7 @@ spec:
           replicasCount: 1
         templates:
           podTemplate: default
-        services:
-          - name: clickhouse
-            template: default   # <- now exists
-          - name: native
-            template: default   # <- now exists
+          serviceTemplate: default
 
   templates:
     podTemplates:
@@ -65,6 +61,8 @@ spec:
 
     serviceTemplates:
       - name: default
+        metadata:
+          name: clickhouse
         spec:
           type: ClusterIP
           ports:
@@ -75,11 +73,11 @@ spec:
               port: 9000
               targetPort: 9000
 
-    volumeClaimTemplates:
-      - name: data
-        reclaimPolicy: Retain
-        spec:
-          accessModes: [ "ReadWriteOnce" ]
-          resources:
-            requests:
-              storage: 20Gi
+#    volumeClaimTemplates: # <— add a PVC so pods can schedule
+#      - name: data
+#        reclaimPolicy: Retain
+#        spec:
+#          accessModes: [ "ReadWriteOnce" ]
+#          resources:
+#            requests:
+#              storage: 10Gi
