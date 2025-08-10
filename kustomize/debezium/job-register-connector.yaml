@@ -20,26 +20,30 @@ spec:
           args:
             - |
               set -euo pipefail
-
-              # Wait for Kafka Connect REST to be ready
+              # Wait for Connect REST
               until curl -fsS http://connect.debezium.svc.cluster.local:8083/connectors >/dev/null; do
                 echo "waiting for Kafka Connect..."; sleep 3
               done
-
-              # If connector exists, update; otherwise create
-              if curl -fsS http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector >/dev/null; then
-                echo "Updating existing connector..."
-                curl -fsS -X PUT -H 'Content-Type: application/json' \
+              
+              echo "Existing connectors:"
+              curl -s http://connect.debezium.svc.cluster.local:8083/connectors | tr -d '\n' && echo
+              
+              # Create or update
+              if curl -s -o /dev/null -w "%{http_code}" http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector | grep -q '^200$'; then
+                echo "Updating connector…"
+                curl -s -i -X PUT -H 'Content-Type: application/json' \
                   --data-binary @/cfg/connector.json \
                   http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector/config
               else
-                echo "Creating connector..."
-                curl -fsS -X POST -H 'Content-Type: application/json' \
+                echo "Creating connector…"
+                curl -s -i -X POST -H 'Content-Type: application/json' \
                   --data-binary @/cfg/connector.json \
                   http://connect.debezium.svc.cluster.local:8083/connectors
               fi
-
-              echo "Connector registered."
+              
+              echo
+              echo "Connector status:"
+              curl -s http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector/status || true
       volumes:
         - name: cfg
           configMap:
