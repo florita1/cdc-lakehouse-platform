@@ -1,0 +1,19 @@
+# apps/postgres-operator.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wal-cdc-postgres-operator
+  namespace: wal-cdc-argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CrunchyData/postgres-operator-examples
+    targetRevision: HEAD
+    path: kustomize/install
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: wal-cdc-pgo
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
