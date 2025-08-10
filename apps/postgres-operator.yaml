@@ -14,7 +14,7 @@ spec:
     path: kustomize/install/default
   destination:
     server: https://kubernetes.default.svc
-    namespace: wal-cdc-pgo
+    namespace: postgres-operator
   syncPolicy:
     automated:
       prune: true
