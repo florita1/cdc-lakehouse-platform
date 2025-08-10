@@ -14,7 +14,7 @@ data:
         "database.hostname": "postgresql.postgres.svc.cluster.local",
         "database.port": "5432",
         "database.user": "debezium",
-        "database.password": "${env:PG_PASSWORD}",
+        "database.password": "__PG_PASSWORD__",
         "database.dbname": "appdb",
         "database.sslmode": "disable",
 

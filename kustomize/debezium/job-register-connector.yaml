@@ -5,6 +5,7 @@ metadata:
   namespace: debezium
   annotations:
     argocd.argoproj.io/hook: PostSync
+    # keep logs after success; delete any prior job before creating a new one
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookFailed
     argocd.argoproj.io/sync-options: Replace=true
 spec:
@@ -14,6 +15,12 @@ spec:
       containers:
         - name: registrar
           image: curlimages/curl:8.8.0
+          env:
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: cfg
               mountPath: /cfg
@@ -21,27 +28,28 @@ spec:
           args:
             - |
               set -euo pipefail
+
               # Wait for Connect REST
               until curl -fsS http://connect.debezium.svc.cluster.local:8083/connectors >/dev/null; do
                 echo "waiting for Kafka Connect..."; sleep 3
               done
-              
-              echo "Existing connectors:"
-              curl -s http://connect.debezium.svc.cluster.local:8083/connectors | tr -d '\n' && echo
-              
+
+              # Inject the password into a temp file
+              sed "s/__PG_PASSWORD__/${PG_PASSWORD}/g" /cfg/connector.json > /tmp/connector.json
+
               # Create or update
               if curl -s -o /dev/null -w "%{http_code}" http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector | grep -q '^200$'; then
                 echo "Updating connector…"
                 curl -s -i -X PUT -H 'Content-Type: application/json' \
-                  --data-binary @/cfg/connector.json \
+                  --data-binary @/tmp/connector.json \
                   http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector/config
               else
                 echo "Creating connector…"
                 curl -s -i -X POST -H 'Content-Type: application/json' \
-                  --data-binary @/cfg/connector.json \
+                  --data-binary @/tmp/connector.json \
                   http://connect.debezium.svc.cluster.local:8083/connectors
               fi
-              
+
               echo
               echo "Connector status:"
               curl -s http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector/status || true

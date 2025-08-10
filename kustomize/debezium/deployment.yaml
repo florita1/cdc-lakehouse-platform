@@ -47,15 +47,6 @@ spec:
             - name: PLUGIN_PATH
               value: /kafka/connect,/debezium
 
-            # enables ${env:...} expansion in connector configs
-            - name: CONFIG_PROVIDERS
-              value: env
-            - name: CONFIG_PROVIDERS_ENV_CLASS
-              value: org.apache.kafka.common.config.provider.EnvVarConfigProvider
-            # optional: restrict which envs can be read
-            - name: CONFIG_PROVIDERS_ENV_PARAM_ALLOWLIST
-              value: PG_PASSWORD
-
             # For ${env:PG_PASSWORD} in connector.json
             - name: PG_PASSWORD
               valueFrom:
