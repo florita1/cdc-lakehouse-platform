@@ -1,9 +1,11 @@
-# apps/postgres-operator.yaml
+# apps/postgres-operator.yaml (wave 0)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: wal-cdc-postgres-operator
   namespace: wal-cdc-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
   source:
@@ -15,5 +17,5 @@ spec:
     namespace: wal-cdc-pgo
   syncPolicy:
     automated:
-      selfHeal: true
       prune: true
+      selfHeal: true

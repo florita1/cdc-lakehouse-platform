@@ -1,9 +1,11 @@
-# apps/postgres.yaml
+# apps/postgres.yaml (wave 1)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: wal-cdc-postgres
   namespace: wal-cdc-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
@@ -15,5 +17,5 @@ spec:
     namespace: wal-cdc-postgres
   syncPolicy:
     automated:
-      selfHeal: true
       prune: true
+      selfHeal: true

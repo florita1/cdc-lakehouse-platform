@@ -5,7 +5,7 @@ metadata:
   name: clickhouse
   namespace: wal-cdc-argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "1"  # after operator
+    argocd.argoproj.io/sync-wave: "5"  # after operator
 spec:
   project: default
   destination:
