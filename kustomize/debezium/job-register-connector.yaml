@@ -5,7 +5,6 @@ metadata:
   namespace: debezium
   annotations:
     argocd.argoproj.io/hook: PostSync
-    # keep logs after success; delete any prior job before creating a new one
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookFailed
     argocd.argoproj.io/sync-options: Replace=true
 spec:
@@ -37,18 +36,17 @@ spec:
               # Inject the password into a temp file
               sed "s/__PG_PASSWORD__/${PG_PASSWORD}/g" /cfg/connector.json > /tmp/connector.json
 
-              # Create or update
+              # Delete if exists (avoids PUT shape issues), then create
               if curl -s -o /dev/null -w "%{http_code}" http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector | grep -q '^200$'; then
-                echo "Updating connector…"
-                curl -s -i -X PUT -H 'Content-Type: application/json' \
-                  --data-binary @/tmp/connector.json \
-                  http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector/config
-              else
-                echo "Creating connector…"
-                curl -s -i -X POST -H 'Content-Type: application/json' \
-                  --data-binary @/tmp/connector.json \
-                  http://connect.debezium.svc.cluster.local:8083/connectors
+                echo "Deleting existing connector…"
+                curl -s -X DELETE http://connect.debezium.svc.cluster.local:8083/connectors/postgres-appdb-connector
+                sleep 2
               fi
+
+              echo "Creating connector…"
+              curl -s -i -X POST -H 'Content-Type: application/json' \
+                   --data-binary @/tmp/connector.json \
+                   http://connect.debezium.svc.cluster.local:8083/connectors
 
               echo
               echo "Connector status:"

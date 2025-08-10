@@ -31,7 +31,7 @@ data:
 
         "heartbeat.interval.ms": "10000",
         "slot.drop.on.stop": "false",
-        "publication.autocreate.mode": "filtered",
+        "publication.autocreate.mode": "disabled",
 
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter",
