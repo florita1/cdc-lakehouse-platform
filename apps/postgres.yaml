@@ -1,0 +1,19 @@
+# apps/postgres.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wal-cdc-postgres
+  namespace: wal-cdc-argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/florita1/wal-cdc-platform.git
+    targetRevision: HEAD
+    path: manifests/postgres
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: wal-cdc-postgres
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
