@@ -54,6 +54,15 @@ spec:
                   name: postgres-credentials
                   key: POSTGRES_PASSWORD
 
+            - name: REST_ADVERTISED_HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: REST_ADVERTISED_PORT
+              value: "8083"
+            - name: REST_PORT
+              value: "8083"
+
           readinessProbe:
             httpGet: { path: /connectors, port: 8083 }
             initialDelaySeconds: 10
