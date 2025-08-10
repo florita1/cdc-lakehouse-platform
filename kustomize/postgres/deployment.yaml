@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:16
+          args:
+            - "-c"; "wal_level=logical"
+            - "-c"; "max_wal_senders=10"
+            - "-c"; "max_replication_slots=10"
+          env:
+            - { name: POSTGRES_USER,     value: "postgres" }
+            - { name: POSTGRES_PASSWORD, value: "postgres" }
+            - { name: POSTGRES_DB,       value: "postgres" }
+          ports:
+            - { containerPort: 5432, name: tcp }
+          volumeMounts:
+            - { name: init-sql, mountPath: /docker-entrypoint-initdb.d }
+            - { name: pgdata,   mountPath: /var/lib/postgresql/data }
+      volumes:
+        - name: init-sql
+          configMap:
+            name: pg-init
+        # Ephemeral data (delete/evict pod => data gone)
+        - name: pgdata
+          emptyDir: {}

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: connect
+  namespace: debezium
   labels: { app: connect }
 spec:
   replicas: 1
@@ -21,33 +22,43 @@ spec:
               value: redpanda.redpanda.svc.cluster.local:9093
             - name: GROUP_ID
               value: connect-cluster
+
+            # Internal topics (single broker!)
             - name: CONFIG_STORAGE_TOPIC
               value: connect-configs
             - name: OFFSET_STORAGE_TOPIC
               value: connect-offsets
             - name: STATUS_STORAGE_TOPIC
               value: connect-status
+            - name: CONFIG_STORAGE_REPLICATION_FACTOR
+              value: "1"
+            - name: OFFSET_STORAGE_REPLICATION_FACTOR
+              value: "1"
+            - name: STATUS_STORAGE_REPLICATION_FACTOR
+              value: "1"
+
+            # Converters
             - name: KEY_CONVERTER
               value: org.apache.kafka.connect.json.JsonConverter
             - name: VALUE_CONVERTER
               value: org.apache.kafka.connect.json.JsonConverter
-            - name: REST_ADVERTISED_HOST_NAME
-              valueFrom:
-                fieldRef: { fieldPath: status.podIP }
-            - name: REST_PORT
-              value: "8083"
-            # Debezium already on plugin.path inside this image
+
+            # Debezium plugin path
             - name: PLUGIN_PATH
               value: /kafka/connect,/debezium
+
+            # For ${env:PG_PASSWORD} in connector.json
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
+
           readinessProbe:
-            httpGet:
-              path: /connectors
-              port: 8083
+            httpGet: { path: /connectors, port: 8083 }
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
-            httpGet:
-              path: /connectors
-              port: 8083
+            httpGet: { path: /connectors, port: 8083 }
             initialDelaySeconds: 20
             periodSeconds: 10

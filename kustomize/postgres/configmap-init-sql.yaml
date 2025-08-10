@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pg-init
+  namespace: postgres
+data:
+  00_init.sql: |
+    CREATE DATABASE appdb;
+    \connect appdb
+    CREATE SCHEMA IF NOT EXISTS app;
+
+    CREATE TABLE IF NOT EXISTS app.users(
+      id BIGSERIAL PRIMARY KEY,
+      name TEXT,
+      email TEXT
+    );
+
+    INSERT INTO app.users(name, email) VALUES ('Florita', 'florita@example.com');
+
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'debezium') THEN
+        CREATE ROLE debezium WITH LOGIN PASSWORD 'debezium' REPLICATION;
+      END IF;
+    END $$;
+
+    GRANT CONNECT ON DATABASE appdb TO debezium;
+    GRANT USAGE ON SCHEMA app TO debezium;
+    GRANT SELECT ON ALL TABLES IN SCHEMA app TO debezium;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT ON TABLES TO debezium;
+
+    CREATE PUBLICATION dbz_pub FOR TABLE app.users;
