@@ -45,7 +45,40 @@ ClickHouse (ReplacingMergeTree)
 - **Teardown:** Full `terraform destroy` support
 
 ---
+## 🚦 Argo CD Setup
 
+This project uses Argo CD as the GitOps controller to deploy and manage all workloads in a **controlled, dependency-aware sequence**.
+
+### **App of Apps pattern**
+- The **`apps/root.yaml`** manifest is the “root” Argo CD Application.
+- Syncing this single application cascades into all other component applications (`postgres.yaml`, `redpanda.yaml`, `debezium.yaml`, `clickhouse.yaml`, etc.).
+- Centralizes version control for the entire CDC stack.
+
+### **Sync Waves**
+- Components deploy in **numbered sync waves** to ensure dependencies are ready before dependents run:
+  - **Wave 0:** Namespace creation (`wal-cdc-namespaces` job)
+  - **Wave 1:** Postgres
+  - **Wave 2:** Stateful services (Redpanda)
+  - **Wave 3:** Connectors (Debezium)
+  - **Wave 4:** Clickhouse Operator
+  - **Wave 5:** ClickHouseInstallation
+
+### **Namespace Bootstrap Job**
+- `apps/wal-cdc-namespaces.yaml` runs as a pre-step to create all required namespaces (`postgres`, `redpanda`, `debezium`, `clickhouse`) before any Helm releases or Kustomize deployments.
+- Prevents race conditions where Argo CD tries to deploy workloads into namespaces that don’t yet exist.
+
+### **Post-Sync Hooks**
+- **Debezium** uses a PostSync hook to register the PostgreSQL connector only after the Kafka Connect workload is healthy.
+  - The hook (*debezium/job-register-connector.yaml*) applies the connector configuration from *configmap-connector.json.yaml*.
+  - This ensures the connector is created automatically and reliably, without requiring any manual registration steps.
+
+### **Benefits**
+- Declarative, reproducible environment setup
+- Automated dependency ordering via sync waves
+- Fully bootstrapped namespaces and DB initialization without manual steps
+- One-click/full-stack deployment from the Argo CD UI
+
+---
 ## 📦 Project Structure
 ```
 wal-cdc-platform/
@@ -177,11 +210,9 @@ Expected RUNNING status:
 
 ### **3. Verify Redpanda CDC Events**
 ```bash
-
 # Consume a few messages from the CDC topic
- kubectl -n redpanda run kafkactl --restart=Never -it --image=bitnami/kafka:3.7.0 -- \                         
+kubectl -n redpanda run kafkactl --restart=Never -it --image=bitnami/kafka:3.7.0 -- \                         
   kafka-topics.sh --list --bootstrap-server redpanda.redpanda.svc.cluster.local:9093
-
 ```
 Example output:
 ```json
@@ -193,7 +224,6 @@ Example output:
   "partition": 0,
   "offset": 2
 }
-
 ```
 
 ---
@@ -202,7 +232,5 @@ Example output:
 
 ### Get Argo CD UI Password
 ```bash
-kubectl -n wal-cdc-argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d; echo
+kubectl -n wal-cdc-argocd get secret argocd-initial-admin-secret   -o jsonpath='{.data.password}' | base64 -d; echo
 ```
-
