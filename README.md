@@ -154,8 +154,8 @@ Snippet from kustomize/postgres/deployment.yaml
 # Replace host with your Debezium service DNS or port-forwarded localhost
 curl -s http://connect:8083/connectors/postgres-appdb-connector/status
 ```
+Expected RUNNING status:
 ``` json
-# Expected RUNNING status:
 {
   "name": "postgres-appdb-connector",
   "connector": {
