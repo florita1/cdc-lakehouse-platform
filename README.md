@@ -47,28 +47,67 @@ ClickHouse (ReplacingMergeTree)
 ---
 
 ## 📦 Project Structure
-
 ```
-postgres-wal-cdc-clickhouse/
-├── terraform/
-│   ├── environments/dev/
-│   └── modules/
-│       ├── vpc/
-│       ├── eks/
-│       ├── iam/
-│       └── argocd/
-├── apps/
-│   ├── postgres.yaml
-│   ├── redpanda.yaml
-│   ├── debezium.yaml
-│   ├── clickhouse.yaml
-│   └── ingestion-service.yaml
-├── helm/
-│   └── ingestion-service/     # Supports --mode override
-├── clickhouse/
-│   └── init.sql               # Schema and table definitions
-├── go-wal-consumer/           # Dual-mode Go ingestion service
-└── README.md
+wal-cdc-platform/
+├── README.md
+├── apps
+│   ├── clickhouse-operator.yaml
+│   ├── clickhouse.yaml
+│   ├── debezium.yaml
+│   ├── postgres.yaml
+│   ├── redpanda.yaml
+│   ├── root.yaml
+│   └── wal-cdc-namespaces.yaml
+├── clickhouse
+│   ├── clickhouseinstallation.yaml
+│   ├── init-configmap.yaml
+│   └── init-job.yaml
+├── kustomize
+│   ├── debezium
+│   │   ├── configmap-connector.json.yaml
+│   │   ├── deployment.yaml
+│   │   ├── job-register-connector.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── secret-postgres.yaml
+│   │   └── service.yaml
+│   └── postgres
+│       ├── configmap-init.sql.yaml
+│       ├── deployment.yaml
+│       ├── kustomization.yaml
+│       └── service.yaml
+├── namespaces
+│   ├── clickhouse-operator.yaml
+│   ├── clickhouse.yaml
+│   ├── debezium.yaml
+│   ├── postgres.yaml
+│   └── redpanda.yaml
+└── terraform
+    ├── environments
+    │   └── dev
+    │       ├── argocd.tf
+    │       ├── eks.tf
+    │       ├── iam.tf
+    │       ├── providers.tf
+    │       ├── variables.tf
+    │       └── vpc.tf
+    └── modules
+        ├── argocd
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── values.yaml
+        ├── eks
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── variables.tf
+        ├── iam
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── variables.tf
+        └── vpc
+            ├── main.tf
+            ├── outputs.tf
+            └── variables.tf
+
 ```
 
 ---
@@ -89,7 +128,81 @@ This project simulates a real-time OLAP analytics flow using PostgreSQL WAL-base
 
 > Everything runs inside Kubernetes with GitOps delivery, enabling reproducibility, modular debugging, and real-time insert visibility — whether you're streaming from Postgres or generating synthetic test traffic.
 
+---
 
-helpful commands:
-how to get argocd ui password:
-```wal-cdc-platform % kubectl -n wal-cdc-argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo```
+## 🖥️ CDC Verification
+
+![Argo CD UI Applications](screenshots/argocd.png)
+
+
+### **1. PostgreSQL WAL Settings**
+Snippet from kustomize/postgres/deployment.yaml
+```bash
+          args:
+            - "-c"
+            - "wal_level=logical"
+            - "-c"
+            - "max_wal_senders=10"
+            - "-c"
+            - "max_replication_slots=10"
+```
+
+---
+
+### **2. Verify Debezium Connector Status**
+```bash
+# Replace host with your Debezium service DNS or port-forwarded localhost
+curl -s http://connect:8083/connectors/postgres-appdb-connector/status
+```
+``` json
+# Expected RUNNING status:
+{
+  "name": "postgres-appdb-connector",
+  "connector": {
+    "state": "RUNNING",
+    "worker_id": "10.2.0.250:8083"
+  },
+  "tasks": [
+    {
+      "id": 0,
+      "state": "RUNNING",
+      "worker_id": "10.2.0.250:8083"
+    }
+  ],
+  "type": "source"
+}
+```
+
+---
+
+### **3. Verify Redpanda CDC Events**
+```bash
+
+# Consume a few messages from the CDC topic
+ kubectl -n redpanda run kafkactl --restart=Never -it --image=bitnami/kafka:3.7.0 -- \                         
+  kafka-topics.sh --list --bootstrap-server redpanda.redpanda.svc.cluster.local:9093
+
+```
+Example output:
+```json
+{
+  "topic": "dbserver1.app.users",
+  "key": "{\"id\":2}",
+  "value": "{\"before\":null,\"after\":{\"id\":2,\"name\":\"TestUser\",\"email\":\"test+upd@example.com\"},\"source\":{\"version\":\"2.6.2.Final\",\"connector\":\"postgresql\",\"name\":\"dbserver1\",\"ts_ms\":1754816578832,\"snapshot\":\"false\",\"db\":\"appdb\",\"sequence\":\"[\\\"26619888\\\",\\\"26619888\\\"]\",\"ts_us\":1754816578832901,\"ts_ns\":1754816578832901000,\"schema\":\"app\",\"table\":\"users\",\"txId\":759,\"lsn\":26619888,\"xmin\":null},\"op\":\"u\",\"ts_ms\":1754816579296,\"ts_us\":1754816579296122,\"ts_ns\":1754816579296122309,\"transaction\":null}",
+  "timestamp": 1754816579456,
+  "partition": 0,
+  "offset": 2
+}
+
+```
+
+---
+
+## 🔑 Helpful Commands
+
+### Get Argo CD UI Password
+```bash
+kubectl -n wal-cdc-argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d; echo
+```
+
