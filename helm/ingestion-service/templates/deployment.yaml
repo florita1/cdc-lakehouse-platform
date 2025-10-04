@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-service
+  labels:
+    app: ingestion-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestion-service
+  template:
+    metadata:
+      labels:
+        app: ingestion-service
+    spec:
+      containers:
+        - name: ingestion-service
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          env:
+            - name: CLICKHOUSE_HOST
+              value: {{ .Values.env.clickhouseHost }}
+            - name: CLICKHOUSE_USER
+              value: {{ .Values.env.clickhouseUser }}
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: password
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.env.clickhouseDb }}
+            - name: CLICKHOUSE_TABLE
+              value: {{ .Values.env.clickhouseTable }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "{{ .Values.env.otelExporterOtlpEndpoint }}"
+            - name: METRICS_PORT
+              value: {{ .Values.env.metricsPort }}
+            - name: MODE
+              value: {{ .Values.env.mode}}
+            - name: BROKERS
+              value: {{ .Values.env.brokers}}
+            - name: TOPIC
+              value: {{ .Values.env.topic}}
+            - name: GROUP
+              value: {{ .Values.env.group}}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

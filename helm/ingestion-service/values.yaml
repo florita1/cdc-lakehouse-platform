@@ -1,0 +1,32 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/florita1/ingestion-service
+  tag: v0.2.7
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8080
+
+env:
+  clickhouseHost: clickhouse-clickhouse.clickhouse.svc.cluster.local
+  clickhouseUser: ingestor
+  clickhouseDb: appdb
+  clickhouseTable: app.users_cur
+
+  otelExporterOtlpEndpoint: grafana-alloy.observability.svc.cluster.local:4318
+  metricsPort: 8080
+
+  mode: cdc
+  redpandaBrokers: redpanda.redpanda.svc.cluster.local:9093
+  topic: dbserver1.app.users
+  groupId: wal-cdc-ingestor
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

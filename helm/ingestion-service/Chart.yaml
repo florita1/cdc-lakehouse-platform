@@ -1,0 +1,4 @@
+apiVersion: v2
+name: ingestion-service
+version: 0.1.0
+description: A Helm chart for deploying the Go-based ingestion service
