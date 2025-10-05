@@ -13,7 +13,7 @@ env:
   clickhouseHost: clickhouse-clickhouse.clickhouse.svc.cluster.local
   clickhouseUser: ingestor
   clickhouseDb: appdb
-  clickhouseTable: app.users_cur
+  clickhouseTable: appdb.users_cur
 
   otelExporterOtlpEndpoint: grafana-alloy.observability.svc.cluster.local:4318
   metricsPort: 8080
