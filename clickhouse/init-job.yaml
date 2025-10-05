@@ -6,35 +6,36 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded,HookFailed
-    # (optional) make sure this runs after CHI is reconciled
     argocd.argoproj.io/sync-wave: "7"
 spec:
-  activeDeadlineSeconds: 300           # hard stop after 5 minutes
-  backoffLimit: 0                      # don't retry on failure
-  ttlSecondsAfterFinished: 600         # auto-cleanup 10 min later
+  backoffLimit: 0
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 600
   template:
     spec:
-      terminationGracePeriodSeconds: 10
       restartPolicy: Never
       containers:
         - name: init
-          image: clickhouse/clickhouse-server:24.6
+          image: curlimages/curl:8.10.1
+          env:
+            - name: CH_HOST
+              value: "clickhouse-clickhouse.clickhouse.svc.cluster.local:8123"
+            - name: CH_USER
+              value: "ingest"
+            - name: CH_PASS
+              value: "ingest-pass"
           command: ["/bin/sh","-c"]
           args:
             - |
               set -euo pipefail
-              CH_HOST="clickhouse.clickhouse.svc.cluster.local"   # <- update if your svc name differs
-              CH_PORT=9000
-              # fail after 300s if CH never becomes reachable
-              END=$((SECONDS+300))
-              until clickhouse-client --host "$CH_HOST" --port "$CH_PORT" --query "SELECT 1" --receive_timeout=3; do
-                if [ "${SECONDS}" -ge "${END}" ]; then
-                  echo "ERROR: Timed out waiting for ClickHouse at ${CH_HOST}:${CH_PORT}"
-                  exit 1
-                fi
-                echo "waiting for ClickHouse..."; sleep 3
+              echo "Waiting for ClickHouse at ${CH_HOST} ..."
+              END=$((SECONDS+600))
+              until curl -fsS -u "${CH_USER}:${CH_PASS}" "http://${CH_HOST}/?query=SELECT%201" >/dev/null 2>&1; do
+                [ ${SECONDS} -ge ${END} ] && echo "Timed out waiting for ClickHouse" && exit 1
+                echo "still waiting..."; sleep 3
               done
-              clickhouse-client --host "$CH_HOST" --port "$CH_PORT" --multiquery < /init/init.sql
+              echo "Applying init.sql ..."
+              curl -fsS -u "${CH_USER}:${CH_PASS}" "http://${CH_HOST}/" --data-binary @/init/init.sql
           volumeMounts:
             - name: init-sql
               mountPath: /init
