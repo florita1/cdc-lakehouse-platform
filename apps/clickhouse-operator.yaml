@@ -15,7 +15,7 @@ spec:
       releaseName: clickhouse-operator
       values: |
         installCRDs: true
-        watchNamespaces: ""
+        watchNamespaces: "clickhouse,clickhouse-operator"
   destination:
     server: https://kubernetes.default.svc
     namespace: clickhouse-operator
