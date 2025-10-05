@@ -3,6 +3,8 @@ kind: ClickHouseInstallation
 metadata:
   name: clickhouse
   namespace: clickhouse
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
 spec:
   configuration:
     users:
