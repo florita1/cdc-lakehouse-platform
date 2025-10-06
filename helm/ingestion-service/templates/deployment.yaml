@@ -37,7 +37,7 @@ spec:
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "{{ .Values.env.otelExporterOtlpEndpoint }}"
             - name: METRICS_PORT
-              value: {{ .Values.env.metricsPort }}
+              value: "{{ .Values.env.metricsPort }}"
             - name: MODE
               value: {{ .Values.env.mode}}
             - name: BROKERS
