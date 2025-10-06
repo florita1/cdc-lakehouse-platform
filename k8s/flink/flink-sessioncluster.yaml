@@ -9,19 +9,22 @@ spec:
   serviceAccount: flink-sa
   mode: native
   flinkConfiguration:
+    jobmanager.memory.process.size: "512m"
+    taskmanager.memory.process.size: "1024m"
     taskmanager.numberOfTaskSlots: "2"
     execution.checkpointing.interval: "30s"
     state.checkpoints.dir: file:///flink-data/checkpoints
     metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
     metrics.reporter.prom.port: "9249"
   jobManager:
+    replicas: 1
     resource:
-      memory: "512m"
+      memory: "640m"
       cpu: 0.25
   taskManager:
     replicas: 1
     resource:
-      memory: "1024m"
+      memory: "1152m"
       cpu: 0.5
   podTemplate:
     metadata:
