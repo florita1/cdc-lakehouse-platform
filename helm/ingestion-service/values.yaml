@@ -16,7 +16,7 @@ env:
   clickhouseTable: appdb.users_cur
 
   otelExporterOtlpEndpoint: grafana-alloy.observability.svc.cluster.local:4318
-  metricsPort: 8080
+  metricsPort: "8080"
 
   mode: cdc
   redpandaBrokers: redpanda.redpanda.svc.cluster.local:9093
