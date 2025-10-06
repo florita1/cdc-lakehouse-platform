@@ -1,0 +1,41 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: flink-session
+  namespace: flink
+spec:
+  image: flink:1.17.2
+  flinkVersion: v1_17
+  serviceAccount: flink-sa
+  mode: native
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    execution.checkpointing.interval: "30s"
+    state.checkpoints.dir: file:///flink-data/checkpoints
+    metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+    metrics.reporter.prom.port: "9249"
+  jobManager:
+    replicas: 1
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+  taskManager:
+    replicas: 2
+    resource:
+      memory: "2048m"
+      cpu: 1
+  podTemplate:
+    metadata:
+      labels:
+        app: flink-session
+    spec:
+      serviceAccountName: flink-sa
+      containers:
+        - name: flink-main-container
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+      volumes:
+        - name: sql
+          configMap:
+            name: flink-sql

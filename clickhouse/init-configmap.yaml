@@ -17,7 +17,22 @@ data:
     )
     ENGINE = MergeTree
     ORDER BY (timestamp, user_id);
-
+    
+    CREATE DATABASE IF NOT EXISTS appdb;
+    
+    CREATE TABLE IF NOT EXISTS appdb.users_cur
+    (
+    `id`         UInt64,
+    `name`       String,
+    `email`      String,
+    `is_deleted` UInt8           DEFAULT 0,   
+    `_op`        UInt8,                       
+    `_lsn`       UInt64,                      
+    `_ts`        DateTime                      
+    )
+    ENGINE = ReplacingMergeTree(_lsn)
+    ORDER BY (`id`);
+        
     -- (Optional) If you want partitions and faster retention operations later:
     -- ENGINE = MergeTree
     -- PARTITION BY toYYYYMMDD(timestamp)
@@ -26,3 +41,4 @@ data:
     -- Ingest user can insert
     CREATE USER IF NOT EXISTS ingest IDENTIFIED BY 'ingest-pass';
     GRANT INSERT ON events_db.events TO ingest;
+    GRANT INSERT ON appdb.users_cur TO ingest;

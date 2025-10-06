@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flink-sql
+  namespace: flink
+data:
+  cdc_to_iceberg.sql: |
+    -- Debezium CDC Source
+    CREATE TABLE cdc_users_src (
+                                   id BIGINT,
+                                   name STRING,
+                                   email STRING,
+                                   is_deleted TINYINT,
+                                   ts TIMESTAMP(3),
+                                   WATERMARK FOR ts AS ts - INTERVAL '2' MINUTE
+    ) WITH (
+          'connector' = 'kafka',
+          'topic' = 'dbserver1.app.users',
+          'properties.bootstrap.servers' = 'redpanda.redpanda.svc.cluster.local:9093',
+          'properties.group.id' = 'flink-iceberg',
+          'scan.startup.mode' = 'earliest-offset',
+          'value.format' = 'debezium-json',
+          'value.debezium-json.ignore-parse-errors' = 'true'
+          );
+
+    -- Iceberg Catalog (S3 + Glue)
+    CREATE CATALOG glue WITH (
+      'type' = 'iceberg',
+      'catalog-impl' = 'org.apache.iceberg.aws.glue.GlueCatalog',
+      'warehouse' = 's3://flink-iceberg-dev/',
+      'io-impl' = 'org.apache.iceberg.aws.s3.S3FileIO',
+      'glue.catalog-id' = '098831525588'
+    );
+
+    CREATE DATABASE IF NOT EXISTS glue.appdb_dev;
+
+    CREATE TABLE IF NOT EXISTS glue.appdb_dev.users_cur (
+                                                            id BIGINT,
+                                                            name STRING,
+                                                            email STRING,
+                                                            is_deleted TINYINT,
+                                                            ts TIMESTAMP(3),
+        PRIMARY KEY (id) NOT ENFORCED
+        ) WITH (
+              'format-version' = '2',
+              'write.upsert.enabled' = 'true',
+              'write.target-file-size-by-bytes' = '134217728',
+              'partitioning' = 'day(ts)'
+              );
+
+    -- CDC → Iceberg
+    INSERT INTO glue.appdb_dev.users_cur
+    SELECT id, name, email, is_deleted, ts
+    FROM cdc_users_src;

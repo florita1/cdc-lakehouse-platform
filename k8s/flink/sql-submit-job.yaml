@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: flink-sql-submit
+  namespace: flink
+spec:
+  template:
+    spec:
+      serviceAccountName: flink-sa
+      restartPolicy: OnFailure
+      containers:
+        - name: sql-client
+          image: flink:1.17.2
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              echo "Submitting Flink SQL to session cluster..."
+              /opt/flink/bin/sql-client.sh \
+                -D execution.checkpointing.interval=30s \
+                -D table.dynamic-table-options.enabled=true \
+                -f /sql/cdc_to_iceberg.sql
+          env:
+            - name: AWS_REGION
+              value: "us-east-1"
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+      volumes:
+        - name: sql
+          configMap:
+            name: flink-sql
