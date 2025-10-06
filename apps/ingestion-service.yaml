@@ -13,7 +13,7 @@ spec:
     path: helm/ingestion-service
   destination:
     server: https://kubernetes.default.svc
-    namespace: ingestion
+    namespace: ingestion-service
   syncPolicy:
     automated:
       prune: true
