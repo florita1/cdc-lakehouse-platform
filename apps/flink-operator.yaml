@@ -8,14 +8,16 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://charts.apache.org/
-    chart: flink-kubernetes-operator
-    targetRevision: 1.10.0
+    repoURL: https://github.com/apache/flink-kubernetes-operator.git
+    targetRevision: release-1.13
+    path: helm/flink-kubernetes-operator
     helm:
-      values: |
+      values: |-
         operatorNamespace: flink-operator
-        watchNamespaces: ["flink"]   # scope it to the flink ns
-        createNamespace: false        # IMPORTANT: namespaces app creates it
+        watchNamespaces: ["flink"]
+        createNamespace: false
+        webhook:
+          create: false
   destination:
     server: https://kubernetes.default.svc
     namespace: flink-operator
