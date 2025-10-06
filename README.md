@@ -1,34 +1,47 @@
-# WAL-Based PostgreSQL CDC Platform
+# WAL-CDC → OLAP + Lakehouse Pipeline
 
-This project implements a real-time Change Data Capture (CDC) platform using PostgreSQL's Write-Ahead Log (WAL) as the data source and ClickHouse as the OLAP sink. It supports both synthetic and CDC-based ingestion, and is deployed Kubernetes-first via GitOps using Terraform and Argo CD.
+This project simulates a real-time OLAP platform built on PostgreSQL WAL-based CDC, streaming through Redpanda/Debezium into ClickHouse for low-latency analytics, while dual-sinking into Iceberg/S3 for lakehouse storage. It’s deployed Kubernetes-first on AWS EKS with Terraform + Argo CD, fully observable end-to-end, and extended with Trino federation, dbt semantic models, and Flink SQL stream processing.
 
-> 🚀 Designed for low-latency OLAP analytics, developer extensibility, and full teardown support.
+
+> Purpose-built for modern SaaS data workloads: real-time ingestion, OLAP exploration, hybrid OLAP+vector search, and automated observability.
 
 ---
 
 ## 🧱 Architecture
 
 ```
-PostgreSQL (WAL)
+PostgreSQL (WAL, tuned for CDC)
      ↓
 Debezium (CDC connector)
      ↓
 Redpanda (Kafka-compatible broker)
      ↓
-Go Ingestion Service (dual mode: synthetic | cdc)
-     ↓
-ClickHouse (ReplacingMergeTree)
+Go Ingestion Service (dual mode: synthetic | CDC)
+     ↙                          ↘
+ClickHouse (ReplacingMergeTree)   Iceberg/S3 (via Flink SQL)
+                ↓
+         Trino Federation
+                ↓
+   OLAP + Lakehouse + AI/Vector Search
 ```
 
 ### Component Summary
 
-| Component             | Role                                                                 |
-|----------------------|----------------------------------------------------------------------|
-| **PostgreSQL**        | Source of truth; emits logical replication events (WAL)             |
-| **Debezium**          | Captures WAL events and publishes to Redpanda                       |
-| **Redpanda**          | Kafka-compatible message broker for CDC buffering                   |
-| **Go Ingestion Service** | Dual-mode: generates synthetic data or consumes CDC events from Redpanda |
-| **ClickHouse**        | Real-time OLAP storage; uses `ReplacingMergeTree` for versioning    |
+| Component               | Role                                                                                   |
+|--------------------------|----------------------------------------------------------------------------------------|
+| **PostgreSQL**           | Source of truth; WAL tuned for logical replication                                     |
+| **Debezium**             | Captures WAL changes and publishes CDC events into Redpanda                            |
+| **Redpanda**             | Kafka-compatible message broker for buffering and fan-out of CDC streams               |
+| **Go Ingestion Service** | Dual-mode: generates synthetic events or consumes Debezium CDC events and inserts into sinks |
+| **ClickHouse**           | Real-time OLAP storage; `ReplacingMergeTree` tables for deduplication and versioning    |
+| **Flink SQL**            | Processes Debezium CDC with event-time semantics, de-dupe, and exactly-once writes into Iceberg |
+| **Iceberg/S3**           | Lakehouse storage; durable, append-only tables for federated querying                   |
+| **Trino**                | Federated SQL query layer across PostgreSQL, ClickHouse, and Iceberg/S3                 |
+| **dbt**                  | Models, semantic layers, incremental marts, and data quality tests (on ClickHouse/Trino)|
+| **Observability Stack**  | Prometheus SDK + Grafana Alloy (metrics), Tempo (traces), Loki (logs), Pixie (live debugging), VictoriaMetrics (retention) |
+| **Argo CD / Terraform**  | GitOps + Infrastructure as Code for Kubernetes-first provisioning and lifecycle management |
+| **KEDA**                 | Autoscaling CDC consumers based on Redpanda lag                                         |
+
 
 ---
 
@@ -83,60 +96,99 @@ This project uses Argo CD as the GitOps controller to deploy and manage all work
 ```
 wal-cdc-platform/
 ├── README.md
-├── apps
-│   ├── clickhouse-operator.yaml
-│   ├── clickhouse.yaml
-│   ├── debezium.yaml
-│   ├── postgres.yaml
-│   ├── redpanda.yaml
-│   ├── root.yaml
-│   └── wal-cdc-namespaces.yaml
-├── clickhouse
-│   ├── clickhouseinstallation.yaml
-│   ├── init-configmap.yaml
-│   └── init-job.yaml
-├── kustomize
-│   ├── debezium
-│   │   ├── configmap-connector.json.yaml
-│   │   ├── deployment.yaml
-│   │   ├── job-register-connector.yaml
-│   │   ├── kustomization.yaml
-│   │   ├── secret-postgres.yaml
-│   │   └── service.yaml
-│   └── postgres
-│       ├── configmap-init.sql.yaml
-│       ├── deployment.yaml
-│       ├── kustomization.yaml
-│       └── service.yaml
-├── namespaces
-│   ├── clickhouse-operator.yaml
-│   ├── clickhouse.yaml
-│   ├── debezium.yaml
-│   ├── postgres.yaml
-│   └── redpanda.yaml
-└── terraform
-    ├── environments
-    │   └── dev
-    │       ├── argocd.tf
-    │       ├── eks.tf
-    │       ├── iam.tf
-    │       ├── providers.tf
-    │       ├── variables.tf
-    │       └── vpc.tf
-    └── modules
-        ├── argocd
-        │   ├── main.tf
-        │   ├── outputs.tf
-        │   └── values.yaml
-        ├── eks
-        │   ├── main.tf
-        │   ├── outputs.tf
-        │   └── variables.tf
-        ├── iam
-        │   ├── main.tf
-        │   ├── outputs.tf
-        │   └── variables.tf
-        └── vpc
+│
+├── apps/                              # Argo CD Application CRs (App-of-Apps model)
+│   ├── clickhouse-operator.yaml
+│   ├── clickhouse.yaml
+│   ├── debezium.yaml
+│   ├── flink.yaml
+│   ├── grafana.yaml
+│   ├── postgres.yaml
+│   ├── redpanda.yaml
+│   ├── root.yaml
+│   ├── trino.yaml
+│   ├── vector-search.yaml
+│   └── wal-cdc-namespaces.yaml
+│
+├── clickhouse/                        # Altinity Operator CRDs + init SQL
+│   ├── clickhouseinstallation.yaml
+│   ├── init-configmap.yaml
+│   └── init-job.yaml
+│
+├── dbt/                               # dbt project for models, marts, semantic layers
+│   ├── models/
+│   ├── seeds/
+│   ├── snapshots/
+│   └── dbt_project.yml
+│
+├── flink/                             # Flink SQL + jobs for Iceberg sink
+│   ├── jobs/
+│   │   ├── normalize-cdc.sql
+│   │   └── dedupe-stream.sql
+│   └── flinkdeployment.yaml
+│
+├── ingestion-service/                 # Go ingestion service (dual-mode: synthetic + CDC)
+│   ├── charts/                        # Helm chart
+│   ├── cmd/
+│   ├── internal/
+│   ├── Dockerfile
+│   └── main.go
+│
+├── kustomize/                         # Base configs for Debezium + Postgres
+│   ├── debezium/
+│   │   ├── configmap-connector.json.yaml
+│   │   ├── deployment.yaml
+│   │   ├── job-register-connector.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── secret-postgres.yaml
+│   │   └── service.yaml
+│   └── postgres/
+│       ├── configmap-init.sql.yaml
+│       ├── deployment.yaml
+│       ├── kustomization.yaml
+│       └── service.yaml
+│
+├── namespaces/                        # Kubernetes namespaces for operators + apps
+│   ├── clickhouse-operator.yaml
+│   ├── clickhouse.yaml
+│   ├── debezium.yaml
+│   ├── flink.yaml
+│   ├── observability.yaml
+│   ├── postgres.yaml
+│   └── redpanda.yaml
+│
+├── observability/                     # Monitoring + tracing + logging
+│   ├── alloy/                         # Grafana Alloy configs
+│   ├── grafana/                       # Dashboards + provisioning
+│   ├── loki/                          # Logging stack
+│   ├── tempo/                         # Distributed tracing
+│   ├── victoria-metrics/              # Long-term metrics storage
+│   └── pixie/                         # Live Kubernetes debugging
+│
+└── terraform/                         # Infra as Code (AWS EKS + networking)
+    ├── environments/
+    │   └── dev/
+    │       ├── argocd.tf
+    │       ├── eks.tf
+    │       ├── iam.tf
+    │       ├── providers.tf
+    │       ├── variables.tf
+    │       └── vpc.tf
+    │
+    └── modules/
+        ├── argocd/
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── values.yaml
+        ├── eks/
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── variables.tf
+        ├── iam/
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── variables.tf
+        └── vpc/
             ├── main.tf
             ├── outputs.tf
             └── variables.tf
@@ -147,19 +199,26 @@ wal-cdc-platform/
 
 ## 🔍 Under the Hood — How It Works
 
-This project simulates a real-time OLAP analytics flow using PostgreSQL WAL-based change data capture, Redpanda buffering, and dual-mode ingestion into ClickHouse — all deployed Kubernetes-first using GitOps.
-
-- **Infrastructure** is provisioned with Terraform, including an EKS cluster, VPC, IAM roles, and Argo CD. Modules support full teardown via `terraform destroy`.
-- **PostgreSQL** is patched to support logical replication. Any inserts or updates trigger WAL events.
-- **Debezium** captures those WAL changes and emits structured CDC events to a Redpanda topic using Kafka-compatible protocols.
-- **Redpanda** buffers the stream and allows the ingestion service to consume events asynchronously.
-- **ClickHouse** is initialized via `init.sql` and stores CDC data using the `ReplacingMergeTree` engine for versioned, deduplicated OLAP analytics.
-- **Go-based Ingestion Service** supports two modes:
-  - `--mode=synthetic` (default): emits mock `UserEvent` payloads for pipeline testing and observability.
-  - `--mode=cdc`: parses Debezium envelopes from Redpanda, transforms them into normalized `UserEvent` structs, and inserts into ClickHouse.
-- **Helm chart** for the ingestion service includes configurable mode support and is deployed via Argo CD alongside other components.
-
-> Everything runs inside Kubernetes with GitOps delivery, enabling reproducibility, modular debugging, and real-time insert visibility — whether you're streaming from Postgres or generating synthetic test traffic.
+This project simulates a real-time OLAP + Lakehouse pipeline using PostgreSQL WAL-based change data capture, Redpanda buffering, and a dual-mode Go ingestion service that writes into ClickHouse for OLAP and Iceberg/S3 for lakehouse storage. The entire stack is deployed Kubernetes-first via GitOps on AWS EKS.
+Infrastructure is provisioned with Terraform (EKS cluster, VPC, IAM, Argo CD) using modular code and remote state. Supports full teardown with terraform destroy.
+PostgreSQL is patched for logical replication; inserts/updates emit WAL changes.
+Debezium streams those WAL changes into Redpanda using Kafka-compatible protocols.
+Redpanda buffers CDC streams and fans out events for downstream consumers.
+Go Ingestion Service supports two modes:
+--mode=synthetic (default): generates mock UserEvent payloads for testing and observability.
+--mode=cdc: consumes Debezium envelopes from Redpanda, normalizes into UserEvent structs, and inserts into sinks.
+ClickHouse stores CDC events in ReplacingMergeTree tables for deduplication, versioning, and low-latency OLAP queries.
+Flink SQL processes Debezium CDC with event-time watermarks, PK-based de-dupe, and exactly-once writes into Iceberg/S3.
+Iceberg/S3 acts as the lakehouse layer for durable storage and federated queries.
+Trino unifies queries across PostgreSQL, ClickHouse, and Iceberg, enabling hybrid OLTP–OLAP analysis and vector/semantic queries.
+dbt layers semantic models, marts, and data tests on top of ClickHouse/Trino.
+Observability is first-class:
+Metrics (Prometheus SDK → Grafana Alloy → VictoriaMetrics)
+Traces (OpenTelemetry → Tempo)
+Logs (structured logs → Alloy → Loki)
+Live debugging (Pixie in-cluster).
+KEDA autoscaling adjusts ingestion service replicas based on Redpanda lag.
+Helm charts manage all workloads (ClickHouse, Debezium, Redpanda, Flink, Trino, ingestion service, observability) and are delivered declaratively via Argo CD.
 
 ---
 
