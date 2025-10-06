@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-operator
+  namespace: wal-cdc-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.apache.org/
+    chart: flink-kubernetes-operator
+    targetRevision: 1.10.0
+    helm:
+      values: |
+        operatorNamespace: flink-operator
+        watchNamespaces: ["flink"]   # scope it to the flink ns
+        createNamespace: false        # IMPORTANT: namespaces app creates it
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: flink-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
