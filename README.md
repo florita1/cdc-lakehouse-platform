@@ -201,24 +201,24 @@ wal-cdc-platform/
 
 This project simulates a real-time OLAP + Lakehouse pipeline using PostgreSQL WAL-based change data capture, Redpanda buffering, and a dual-mode Go ingestion service that writes into ClickHouse for OLAP and Iceberg/S3 for lakehouse storage. The entire stack is deployed Kubernetes-first via GitOps on AWS EKS.
 Infrastructure is provisioned with Terraform (EKS cluster, VPC, IAM, Argo CD) using modular code and remote state. Supports full teardown with terraform destroy.
-PostgreSQL is patched for logical replication; inserts/updates emit WAL changes.
-Debezium streams those WAL changes into Redpanda using Kafka-compatible protocols.
-Redpanda buffers CDC streams and fans out events for downstream consumers.
-Go Ingestion Service supports two modes:
+--PostgreSQL is patched for logical replication; inserts/updates emit WAL changes.
+--Debezium streams those WAL changes into Redpanda using Kafka-compatible protocols.
+--Redpanda buffers CDC streams and fans out events for downstream consumers.
+--Go Ingestion Service supports two modes:
 --mode=synthetic (default): generates mock UserEvent payloads for testing and observability.
 --mode=cdc: consumes Debezium envelopes from Redpanda, normalizes into UserEvent structs, and inserts into sinks.
-ClickHouse stores CDC events in ReplacingMergeTree tables for deduplication, versioning, and low-latency OLAP queries.
-Flink SQL processes Debezium CDC with event-time watermarks, PK-based de-dupe, and exactly-once writes into Iceberg/S3.
-Iceberg/S3 acts as the lakehouse layer for durable storage and federated queries.
-Trino unifies queries across PostgreSQL, ClickHouse, and Iceberg, enabling hybrid OLTP–OLAP analysis and vector/semantic queries.
-dbt layers semantic models, marts, and data tests on top of ClickHouse/Trino.
-Observability is first-class:
+--ClickHouse stores CDC events in ReplacingMergeTree tables for deduplication, versioning, and low-latency OLAP queries.
+--Flink SQL processes Debezium CDC with event-time watermarks, PK-based de-dupe, and exactly-once writes into Iceberg/S3.
+--Iceberg/S3 acts as the lakehouse layer for durable storage and federated queries.
+--Trino unifies queries across PostgreSQL, ClickHouse, and Iceberg, enabling hybrid OLTP–OLAP analysis and vector/semantic queries.
+--dbt layers semantic models, marts, and data tests on top of ClickHouse/Trino.
+--Observability is first-class:
 Metrics (Prometheus SDK → Grafana Alloy → VictoriaMetrics)
 Traces (OpenTelemetry → Tempo)
 Logs (structured logs → Alloy → Loki)
 Live debugging (Pixie in-cluster).
-KEDA autoscaling adjusts ingestion service replicas based on Redpanda lag.
-Helm charts manage all workloads (ClickHouse, Debezium, Redpanda, Flink, Trino, ingestion service, observability) and are delivered declaratively via Argo CD.
+--KEDA autoscaling adjusts ingestion service replicas based on Redpanda lag.
+--Helm charts manage all workloads (ClickHouse, Debezium, Redpanda, Flink, Trino, ingestion service, observability) and are delivered declaratively via Argo CD.
 
 ---
 
