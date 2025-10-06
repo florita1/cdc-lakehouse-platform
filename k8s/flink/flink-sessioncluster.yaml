@@ -15,15 +15,14 @@ spec:
     metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
     metrics.reporter.prom.port: "9249"
   jobManager:
+    resource:
+      memory: "512m"
+      cpu: 0.25
+  taskManager:
     replicas: 1
     resource:
       memory: "1024m"
       cpu: 0.5
-  taskManager:
-    replicas: 2
-    resource:
-      memory: "2048m"
-      cpu: 1
   podTemplate:
     metadata:
       labels:
