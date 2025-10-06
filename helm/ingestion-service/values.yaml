@@ -11,7 +11,7 @@ service:
 
 env:
   clickhouseHost: clickhouse-clickhouse.clickhouse.svc.cluster.local
-  clickhouseUser: ingestor
+  clickhouseUser: ingest
   clickhouseDb: appdb
   clickhouseTable: appdb.users_cur
 
