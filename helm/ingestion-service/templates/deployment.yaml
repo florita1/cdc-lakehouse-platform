@@ -22,30 +22,36 @@ spec:
             - containerPort: {{ .Values.service.port }}
           env:
             - name: CLICKHOUSE_HOST
-              value: {{ .Values.env.clickhouseHost }}
+              value: {{ .Values.env.clickhouseHost | quote }}
             - name: CLICKHOUSE_USER
-              value: {{ .Values.env.clickhouseUser }}
+              value: {{ .Values.env.clickhouseUser | quote }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: clickhouse-secret
                   key: password
             - name: CLICKHOUSE_DB
-              value: {{ .Values.env.clickhouseDb }}
+              value: {{ .Values.env.clickhouseDb | quote }}
             - name: CLICKHOUSE_TABLE
-              value: {{ .Values.env.clickhouseTable }}
+              value: {{ .Values.env.clickhouseTable | quote }}
+
+            # Most OTLP HTTP exporters want a scheme
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "{{ .Values.env.otelExporterOtlpEndpoint }}"
+              value: {{ .Values.env.otelExporterOtlpEndpoint | quote }}
+
             - name: METRICS_PORT
-              value: "{{ .Values.env.metricsPort }}"
+              value: {{ .Values.env.metricsPort | quote }}
+
             - name: MODE
-              value: {{ .Values.env.mode}}
-            - name: BROKERS
-              value: {{ .Values.env.brokers}}
+              value: {{ .Values.env.mode | quote }}
+
+            # Align with your app’s envs used in local runs
+            - name: REDPANDA_BROKERS
+              value: {{ required "env.redpandaBrokers is required" .Values.env.redpandaBrokers | quote }}
             - name: TOPIC
-              value: {{ .Values.env.topic}}
-            - name: GROUP
-              value: {{ .Values.env.group}}
+              value: {{ required "env.topic is required" .Values.env.topic | quote }}
+            - name: GROUP_ID
+              value: {{ required "env.groupId is required" .Values.env.groupId | quote }}
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

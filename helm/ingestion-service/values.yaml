@@ -15,13 +15,14 @@ env:
   clickhouseDb: appdb
   clickhouseTable: appdb.users_cur
 
-  otelExporterOtlpEndpoint: grafana-alloy.observability.svc.cluster.local:4318
-  metricsPort: 8080
+  # include scheme for OTLP/HTTP
+  otelExporterOtlpEndpoint: "http://grafana-alloy.observability.svc.cluster.local:4318"
+  metricsPort: "8080"
 
-  mode: cdc
-  redpandaBrokers: redpanda.redpanda.svc.cluster.local:9093
-  topic: dbserver1.app.users
-  groupId: wal-cdc-ingestor
+  mode: "cdc"
+  redpandaBrokers: "redpanda.redpanda.svc.cluster.local:9093"
+  topic: "dbserver1.app.users"
+  groupId: "wal-cdc-ingestor"
 
 resources:
   requests:
