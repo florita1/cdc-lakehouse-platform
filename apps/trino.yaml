@@ -83,6 +83,13 @@ spec:
             iceberg.register-table-procedure.enabled=true
             fs.native-s3.enabled=true
             s3.region=us-east-1
+          postgresql: |
+            connector.name=postgresql
+            connection-url=jdbc:postgresql://postgresql.postgres.svc.cluster.local:5432/<DB>
+            connection-user=postgres
+            connection-password=postgres
+            case-insensitive-name-matching=true
+            metadata.cache-ttl=1m
 
         env:
           - name: CH_PASSWORD
