@@ -1,0 +1,10 @@
+clickhouse:
+  host: clickhouse-clickhouse.clickhouse.svc.cluster.local
+  port: "8123"
+  user: ingest
+  database: appdb
+
+secrets:
+  name: clickhouse-secret
+
+projectSubPath: dbt

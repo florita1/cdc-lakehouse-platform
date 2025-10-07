@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dbt
+  namespace: wal-cdc-argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/florita1/wal-cdc-platform.git
+    targetRevision: HEAD
+    path: helm/dbt-runner
+    helm:
+      values: |
+        clickhouse:
+          host: clickhouse-clickhouse.clickhouse.svc.cluster.local
+          port: "8123"
+          user: ingest
+          database: appdb
+        secrets:
+          name: clickhouse-secret
+          encrypted_password: {{ .Values.secrets.encrypted_password | default "REPLACE_ME" }}
+        projectSubPath: dbt
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: clickhouse
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

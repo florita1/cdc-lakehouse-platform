@@ -1,0 +1,15 @@
+name: wal_cdc_ch
+version: 1.0.0
+config-version: 2
+profile: clickhouse
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+models:
+  wal_cdc_ch:
+    +materialized: table
+    +on_schema_change: sync_all_columns
+    marts:
+      +materialized: incremental
+      +incremental_strategy: delete+insert
+      +unique_key: id

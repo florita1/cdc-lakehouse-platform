@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dbt-runner.fullname" . | default "wal-cdc-dbt-build" }}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: dbt
+          image: ghcr.io/dbt-labs/dbt-clickhouse:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CLICKHOUSE_HOST
+              value: {{ .Values.clickhouse.host | quote }}
+            - name: CLICKHOUSE_PORT
+              value: {{ .Values.clickhouse.port | quote }}
+            - name: CLICKHOUSE_USER
+              value: {{ .Values.clickhouse.user | quote }}
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: password
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.database | quote }}
+            - name: DBT_PROFILES_DIR
+              value: /workdir
+          volumeMounts:
+            - name: workdir
+              mountPath: /workdir
+            - name: project
+              mountPath: /app/dbt
+          workingDir: /app/dbt
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              # Render profiles.yml from env vars
+              cat > /workdir/profiles.yml <<'EOF'
+              clickhouse:
+                target: prod
+                outputs:
+                  prod:
+                    type: clickhouse
+                    host: "${CLICKHOUSE_HOST}"
+                    port: ${CLICKHOUSE_PORT}
+                    user: "${CLICKHOUSE_USER}"
+                    password: "${CLICKHOUSE_PASSWORD}"
+                    schema: "${CLICKHOUSE_DB}"
+                    secure: false
+                    http_compression: true
+                    verify: false
+                    connect_timeout: 10
+                    retries: 3
+              EOF
+              dbt --version
+              dbt deps || true
+              dbt build --profiles-dir /workdir --project-dir /app/dbt --target prod
+      volumes:
+        - name: workdir
+          emptyDir: {}
+        - name: project
+          projected:
+            sources:
+              - downwardAPI:
+                  items: [] #Argo CDs volume injection will bind the chart’s files
