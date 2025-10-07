@@ -9,5 +9,4 @@ secrets:
 
 source:
   repoURL: https://github.com/florita1/wal-cdc-platform.git
-  revision: main
   subPath: dbt

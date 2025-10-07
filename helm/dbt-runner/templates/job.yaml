@@ -6,6 +6,7 @@ metadata:
     app.kubernetes.io/name: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
   annotations:
+    # Let Argo recreate the Job on changes
     argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 0
@@ -18,6 +19,9 @@ spec:
     spec:
       restartPolicy: Never
 
+      # -------------------------
+      # Fetch dbt project files
+      # -------------------------
       initContainers:
         - name: fetch-project
           image: alpine:3
@@ -26,6 +30,7 @@ spec:
             - |
               set -e
               apk add --no-cache git ca-certificates
+              # Clone default branch (or pin via .Values.source.revision if you want)
               git clone --depth=1 --filter=blob:none {{ .Values.source.repoURL }} /work/src
               mkdir -p /work/dbt
               cp -r /work/src/{{ .Values.source.subPath }}/. /work/dbt/
@@ -34,6 +39,9 @@ spec:
             - name: workdir
               mountPath: /work
 
+      # -------------------------
+      # Run dbt build
+      # -------------------------
       containers:
         - name: dbt
           image: python:3.11-slim
@@ -59,19 +67,20 @@ spec:
           args: |
             set -e
             python -m pip install --no-cache-dir --upgrade pip
+            # Keep core/adapter majors aligned
             pip install --no-cache-dir "dbt-core>=1.7,<1.9" "dbt-clickhouse>=1.7,<1.9"
             mkdir -p /work/profiles
-            cat > /work/profiles/profiles.yml <<'EOF'
+            cat > /work/profiles/profiles.yml <<EOF
             clickhouse:
               target: prod
               outputs:
                 prod:
                   type: clickhouse
-                  host: "{{ env_var('CLICKHOUSE_HOST') }}"
-                  port: "{{ env_var('CLICKHOUSE_PORT') | int }}"
-                  user: "{{ env_var('CLICKHOUSE_USER') }}"
-                  password: "{{ env_var('CLICKHOUSE_PASSWORD') }}"
-                  schema: "{{ env_var('CLICKHOUSE_DB') }}"
+                  host: "${CLICKHOUSE_HOST}"
+                  port: ${CLICKHOUSE_PORT}
+                  user: "${CLICKHOUSE_USER}"
+                  password: "${CLICKHOUSE_PASSWORD}"
+                  schema: "${CLICKHOUSE_DB}"
                   secure: false
                   http_compression: true
                   verify: false

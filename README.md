@@ -69,12 +69,17 @@ This project uses Argo CD as the GitOps controller to deploy and manage all work
 
 ### **Sync Waves**
 - Components deploy in **numbered sync waves** to ensure dependencies are ready before dependents run:
-  - **Wave 0:** Namespace creation (`wal-cdc-namespaces` job)
+  - **Wave -2:** Namespace creation (`wal-cdc-namespaces` job)
+  - **Wave -1:** Flink Operator
+  - **Wave 0:** Submit Flink SQL job and prepare Sealed Secrets
   - **Wave 1:** Postgres
   - **Wave 2:** Stateful services (Redpanda)
   - **Wave 3:** Connectors (Debezium)
   - **Wave 4:** Clickhouse Operator
   - **Wave 5:** ClickHouseInstallation
+  - **Wave 6:** Trino
+  - **Wave 7:** Dbt
+  - **Wave 10:** Ingestion Service last to ensure infra is up
 
 ### **Namespace Bootstrap Job**
 - `apps/wal-cdc-namespaces.yaml` runs as a pre-step to create all required namespaces (`postgres`, `redpanda`, `debezium`, `clickhouse`) before any Helm releases or Kustomize deployments.
