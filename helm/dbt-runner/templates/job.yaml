@@ -20,11 +20,12 @@ spec:
 
       initContainers:
         - name: fetch-project
-          image: alpine/git:2.45
+          image: alpine:3
           command: ["/bin/sh","-lc"]
           args:
             - |
               set -e
+              apk add --no-cache git ca-certificates openssh
               git clone --depth=1 --filter=blob:none \
                 --branch {{ .Values.source.revision | default "HEAD" }} \
                 {{ .Values.source.repoURL }} /work/src
