@@ -74,13 +74,15 @@ spec:
             connection-password=${ENV:CH_PASSWORD}
           iceberg: |
             connector.name=iceberg
-            catalog.type=glue
-            glue.catalogid=098831525588
-            hive.s3.aws-region=us-east-1
+            iceberg.catalog.type=glue
+            hive.metastore.glue.region=us-east-1
+            hive.metastore.glue.catalogid=098831525588
+            hive.metastore.glue.default-warehouse-dir=s3://flink-iceberg-dev/warehouse/
+            hive.metastore.glue.use-web-identity-token-credentials-provider=true
             iceberg.file-format=PARQUET
             iceberg.register-table-procedure.enabled=true
-            # Where data files live (adjust bucket/prefix)
-            warehouse=s3://flink-iceberg-dev/warehouse
+            fs.native-s3.enabled=true
+            s3.region=us-east-1
 
         env:
           - name: CH_PASSWORD
