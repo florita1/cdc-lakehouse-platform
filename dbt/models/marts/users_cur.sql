@@ -1,8 +1,10 @@
 {{ config(
   materialized='table',
-  engine=adapter.dispatch('ch_replacing_merge_tree')('id', ver_col='_lsn', order_by='(id)')
+  engine='ReplacingMergeTree(_lsn)',
+  order_by='(id)'
 ) }}
 
+-- empty SELECT just to emit the exact DDL; ingestion writes the rows
 select
     toUInt64(0)  as id,
     ''           as name,
