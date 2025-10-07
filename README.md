@@ -233,7 +233,7 @@ Live debugging (Pixie in-cluster).
 
 ## 🖥️ CDC Verification
 
-![Argo CD UI Applications](/Users/thomasnichols/IdeaProjects/wal-cdc-platform/screenshots/argocd2.png)
+![Argo CD UI Applications](screenshots/argocd2.png)
 
 
 ### **1. PostgreSQL WAL Settings**
