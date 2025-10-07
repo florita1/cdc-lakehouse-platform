@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: dbt
   namespace: wal-cdc-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"   # secrets app should be wave 0
 spec:
   project: default
   source:
@@ -18,8 +20,10 @@ spec:
           database: appdb
         secrets:
           name: clickhouse-secret
-          encrypted_password: {{ .Values.secrets.encrypted_password | default "REPLACE_ME" }}
-        projectSubPath: dbt
+        source:
+          repoURL: https://github.com/florita1/wal-cdc-platform.git
+          revision: HEAD
+          subPath: dbt
   destination:
     server: https://kubernetes.default.svc
     namespace: clickhouse

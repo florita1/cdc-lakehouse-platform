@@ -7,4 +7,7 @@ clickhouse:
 secrets:
   name: clickhouse-secret
 
-projectSubPath: dbt
+source:
+  repoURL: ""
+  revision: "HEAD"
+  subPath: "dbt"

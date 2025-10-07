@@ -1,12 +1,27 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "dbt-runner.fullname" . | default "wal-cdc-dbt-build" }}
+  name: {{ include "dbt-runner.fullname" . | default "dbt-build" }}
 spec:
   backoffLimit: 0
   template:
     spec:
       restartPolicy: Never
+
+      initContainers:
+        - name: fetch-project
+          image: alpine/git:2.45
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              set -euo pipefail
+              git clone --depth=1 {{ .Values.source.repoURL }} /work/src
+              mkdir -p /work/dbt
+              cp -r /work/src/{{ .Values.source.subPath }}/* /work/dbt/
+          volumeMounts:
+            - name: workdir
+              mountPath: /work
+
       containers:
         - name: dbt
           image: ghcr.io/dbt-labs/dbt-clickhouse:latest
@@ -18,26 +33,21 @@ spec:
               value: {{ .Values.clickhouse.port | quote }}
             - name: CLICKHOUSE_USER
               value: {{ .Values.clickhouse.user | quote }}
+            - name: CLICKHOUSE_DB
+              value: {{ .Values.clickhouse.database | quote }}
             - name: CLICKHOUSE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secrets.name }}
                   key: password
-            - name: CLICKHOUSE_DB
-              value: {{ .Values.clickhouse.database | quote }}
             - name: DBT_PROFILES_DIR
-              value: /workdir
-          volumeMounts:
-            - name: workdir
-              mountPath: /workdir
-            - name: project
-              mountPath: /app/dbt
-          workingDir: /app/dbt
+              value: /work/profiles
+          workingDir: /work/dbt
           command: ["/bin/sh","-lc"]
           args:
             - |
-              # Render profiles.yml from env vars
-              cat > /workdir/profiles.yml <<'EOF'
+              mkdir -p /work/profiles
+              cat > /work/profiles/profiles.yml <<'EOF'
               clickhouse:
                 target: prod
                 outputs:
@@ -56,12 +66,11 @@ spec:
               EOF
               dbt --version
               dbt deps || true
-              dbt build --profiles-dir /workdir --project-dir /app/dbt --target prod
+              dbt build --profiles-dir /work/profiles --project-dir /work/dbt --target prod
+          volumeMounts:
+            - name: workdir
+              mountPath: /work
+
       volumes:
         - name: workdir
           emptyDir: {}
-        - name: project
-          projected:
-            sources:
-              - downwardAPI:
-                  items: [] #Argo CDs volume injection will bind the chart’s files
