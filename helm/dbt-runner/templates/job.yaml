@@ -21,7 +21,7 @@ spec:
       initContainers:
         - name: fetch-project
           image: alpine:3
-          command: ["/bin/sh","-lc"]
+          command: [ "/bin/sh","-lc" ]
           args:
             - |
               set -e
