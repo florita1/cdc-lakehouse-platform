@@ -16,6 +16,9 @@ spec:
             - |
               echo "Submitting Flink SQL to session cluster..."
               /opt/flink/bin/sql-client.sh \
+                -D execution.target=kubernetes-session \
+                -D kubernetes.cluster-id=flink-session \
+                -D kubernetes.namespace=flink \
                 -D execution.checkpointing.interval=30s \
                 -D table.dynamic-table-options.enabled=true \
                 -f /sql/cdc_to_iceberg.sql
