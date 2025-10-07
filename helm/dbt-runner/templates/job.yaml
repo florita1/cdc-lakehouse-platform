@@ -21,7 +21,7 @@ spec:
       initContainers:
         - name: fetch-project
           image: alpine:3
-          command: [ "/bin/sh","-lc" ]
+          command: ["/bin/sh","-lc"]
           args:
             - |
               set -e
@@ -36,7 +36,7 @@ spec:
 
       containers:
         - name: dbt
-          image: ghcr.io/dbt-labs/dbt-clickhouse:latest
+          image: python:3.11-slim
           imagePullPolicy: IfNotPresent
           env:
             - name: CLICKHOUSE_HOST
@@ -56,28 +56,31 @@ spec:
               value: /work/profiles
           workingDir: /work/dbt
           command: ["/bin/sh","-lc"]
-          args:
-            - |
-              mkdir -p /work/profiles
-              cat > /work/profiles/profiles.yml <<'EOF'
-              clickhouse:
-                target: prod
-                outputs:
-                  prod:
-                    type: clickhouse
-                    host: "${CLICKHOUSE_HOST}"
-                    port: ${CLICKHOUSE_PORT}
-                    user: "${CLICKHOUSE_USER}"
-                    password: "${CLICKHOUSE_PASSWORD}"
-                    schema: "${CLICKHOUSE_DB}"
-                    secure: false
-                    http_compression: true
-                    verify: false
-                    connect_timeout: 10
-                    retries: 3
-              EOF
-              dbt deps || true
-              dbt build --profiles-dir /work/profiles --project-dir /work/dbt --target prod
+          args: |
+            set -e
+            python -m pip install --no-cache-dir --upgrade pip
+            pip install --no-cache-dir "dbt-core>=1.7,<1.9" "dbt-clickhouse>=1.7,<1.9"
+            mkdir -p /work/profiles
+            cat > /work/profiles/profiles.yml <<'EOF'
+            clickhouse:
+              target: prod
+              outputs:
+                prod:
+                  type: clickhouse
+                  host: "{{ env_var('CLICKHOUSE_HOST') }}"
+                  port: "{{ env_var('CLICKHOUSE_PORT') | int }}"
+                  user: "{{ env_var('CLICKHOUSE_USER') }}"
+                  password: "{{ env_var('CLICKHOUSE_PASSWORD') }}"
+                  schema: "{{ env_var('CLICKHOUSE_DB') }}"
+                  secure: false
+                  http_compression: true
+                  verify: false
+                  connect_timeout: 10
+                  retries: 3
+            EOF
+            dbt --version
+            dbt deps || true
+            dbt build --profiles-dir /work/profiles --project-dir /work/dbt --target prod
           volumeMounts:
             - name: workdir
               mountPath: /work
