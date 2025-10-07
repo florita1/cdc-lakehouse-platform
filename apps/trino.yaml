@@ -1,0 +1,91 @@
+# apps/trino.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trino
+  namespace: wal-cdc-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  project: default
+  destination:
+    namespace: trino
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://trinodb.github.io/charts
+    chart: trino
+    targetRevision: 1.41.0
+    helm:
+      values: |
+        coordinator:
+          replicas: 1
+          jvm:
+            maxHeapSize: "2G"
+            gcMethod:
+              type: "UseG1GC"
+          resources:
+            requests: { cpu: "500m", memory: "2Gi" }
+            limits:   { cpu: "1",    memory: "3Gi" }
+
+        worker:
+          replicas: 2
+          jvm:
+            maxHeapSize: "3G"
+            gcMethod:
+              type: "UseG1GC"
+          resources:
+            requests: { cpu: "500m", memory: "3Gi" }
+            limits:   { cpu: "2",    memory: "4Gi" }
+
+        service:
+          type: ClusterIP
+          port: 8080
+
+        serviceAccount:
+          create: true
+          name: trino
+          annotations:
+            eks.amazonaws.com/role-arn: arn:aws:iam::098831525588:role/trino-irsa
+
+        config:
+          # Trino config properties
+          trinoConfig:
+            coordinator: "true"
+            node-scheduler.include-coordinator: "false"
+            http-server.http.port: "8080"
+            discovery-server.enabled: "true"
+            discovery.uri: "http://localhost:8080"
+
+          # JVM config for all nodes
+          jvm:
+            - "-Xms1G"
+            - "-Xmx1G"
+
+          # Log levels
+          log:
+            - "io.trino=INFO"
+
+        # Catalogs: ClickHouse + Iceberg (Glue)
+        additionalCatalogs:
+          clickhouse: |
+            connector.name=clickhouse
+            connection-url=jdbc:clickhouse://clickhouse.clickhouse.svc.cluster.local:8123
+            connection-user=ingest
+            connection-password=${ENV:CH_PASSWORD}
+          iceberg: |
+            connector.name=iceberg
+            catalog.type=glue
+            glue.catalogid=098831525588
+            hive.s3.aws-region=us-east-1
+            iceberg.file-format=PARQUET
+            iceberg.register-table-procedure.enabled=true
+            # Where data files live (adjust bucket/prefix)
+            warehouse=s3://flink-iceberg-dev/warehouse
+
+        env:
+          - name: CH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: clickhouse-secret
+                key: password
+
