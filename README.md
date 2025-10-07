@@ -100,103 +100,107 @@ This project uses Argo CD as the GitOps controller to deploy and manage all work
 ## 📦 Project Structure
 ```
 wal-cdc-platform/
-├── README.md
-│
-├── apps/                              # Argo CD Application CRs (App-of-Apps model)
+├── README.md                                   # Top-level docs and quickstart
+├── apps                                        # Argo CD “App-of-Apps” + child Applications (ClickHouse, Redpanda, Postgres, Debezium, Flink, Trino, ingestion svc) and sealed secrets
+│   ├── app-ingestion-secrets.yaml
+│   ├── app-sealed-secrets.yaml
 │   ├── clickhouse-operator.yaml
 │   ├── clickhouse.yaml
+│   ├── dbt-runner.yaml
 │   ├── debezium.yaml
-│   ├── flink.yaml
-│   ├── grafana.yaml
+│   ├── flink-operator.yaml
+│   ├── flink-sql.yaml
+│   ├── ingestion-secrets
+│   │   └── clickhouse-secret.sealed.yaml
+│   ├── ingestion-service.yaml
 │   ├── postgres.yaml
 │   ├── redpanda.yaml
 │   ├── root.yaml
 │   ├── trino.yaml
-│   ├── vector-search.yaml
 │   └── wal-cdc-namespaces.yaml
-│
-├── clickhouse/                        # Altinity Operator CRDs + init SQL
-│   ├── clickhouseinstallation.yaml
-│   ├── init-configmap.yaml
-│   └── init-job.yaml
-│
-├── dbt/                               # dbt project for models, marts, semantic layers
-│   ├── models/
-│   ├── seeds/
-│   ├── snapshots/
-│   └── dbt_project.yml
-│
-├── flink/                             # Flink SQL + jobs for Iceberg sink
-│   ├── jobs/
-│   │   ├── normalize-cdc.sql
-│   │   └── dedupe-stream.sql
-│   └── flinkdeployment.yaml
-│
-├── ingestion-service/                 # Go ingestion service (dual-mode: synthetic + CDC)
-│   ├── charts/                        # Helm chart
-│   ├── cmd/
-│   ├── internal/
-│   ├── Dockerfile
-│   └── main.go
-│
-├── kustomize/                         # Base configs for Debezium + Postgres
-│   ├── debezium/
+├── clickhouse                                  # ClickHouseInstallation (CHI) and bootstrap manifests
+│   └── clickhouseinstallation.yaml
+├── dbt                                         # dbt project and models for downstream transforms
+│   ├── dbt_project.yml
+│   └── models
+│       └── marts
+│           └── users_cur.sql
+├── helm                                        # Helm charts for deployables (ingestion-service, dbt-runner)
+│   ├── dbt-runner
+│   │   ├── Chart.yaml
+│   │   ├── templates
+│   │   │   └── job.yaml
+│   │   └── values.yaml
+│   └── ingestion-service
+│       ├── Chart.yaml
+│       ├── templates
+│       │   ├── deployment.yaml
+│       │   └── service.yaml
+│       └── values.yaml
+├── k8s                                         # Raw Kubernetes manifests (Flink session cluster, RBAC, SQL submitter)
+│   └── flink
+│       ├── flink-rbac.yaml
+│       ├── flink-sessioncluster.yaml
+│       ├── serviceaccount.yaml
+│       ├── sql-configmap.yaml
+│       └── sql-submit-job.yaml
+├── kustomize                                   # Kustomize overlays/manifests for Debezium and Postgres
+│   ├── debezium
 │   │   ├── configmap-connector.json.yaml
 │   │   ├── deployment.yaml
 │   │   ├── job-register-connector.yaml
 │   │   ├── kustomization.yaml
 │   │   ├── secret-postgres.yaml
 │   │   └── service.yaml
-│   └── postgres/
+│   └── postgres
 │       ├── configmap-init.sql.yaml
 │       ├── deployment.yaml
 │       ├── kustomization.yaml
 │       └── service.yaml
-│
-├── namespaces/                        # Kubernetes namespaces for operators + apps
+├── namespaces                                  # Namespace definitions for all platform components
 │   ├── clickhouse-operator.yaml
 │   ├── clickhouse.yaml
 │   ├── debezium.yaml
+│   ├── flink-operator.yaml
 │   ├── flink.yaml
-│   ├── observability.yaml
+│   ├── ingestion-service.yaml
 │   ├── postgres.yaml
-│   └── redpanda.yaml
-│
-├── observability/                     # Monitoring + tracing + logging
-│   ├── alloy/                         # Grafana Alloy configs
-│   ├── grafana/                       # Dashboards + provisioning
-│   ├── loki/                          # Logging stack
-│   ├── tempo/                         # Distributed tracing
-│   ├── victoria-metrics/              # Long-term metrics storage
-│   └── pixie/                         # Live Kubernetes debugging
-│
-└── terraform/                         # Infra as Code (AWS EKS + networking)
-    ├── environments/
-    │   └── dev/
-    │       ├── argocd.tf
-    │       ├── eks.tf
-    │       ├── iam.tf
-    │       ├── providers.tf
-    │       ├── variables.tf
-    │       └── vpc.tf
-    │
-    └── modules/
-        ├── argocd/
-        │   ├── main.tf
-        │   ├── outputs.tf
-        │   └── values.yaml
-        ├── eks/
-        │   ├── main.tf
-        │   ├── outputs.tf
-        │   └── variables.tf
-        ├── iam/
-        │   ├── main.tf
-        │   ├── outputs.tf
-        │   └── variables.tf
-        └── vpc/
-            ├── main.tf
-            ├── outputs.tf
-            └── variables.tf
+│   ├── redpanda.yaml
+│   └── trino.yaml
+├── terraform                                   # IaC for AWS (VPC, EKS, IAM), Argo CD bootstrap, Iceberg (Glue/S3/IRSA)
+│   ├── environments
+│   │   └── dev                                 # Dev environment wiring for the modules below
+│   │       ├── argocd.tf
+│   │       ├── eks.tf
+│   │       ├── iam.tf
+│   │       ├── iceberg.tf
+│   │       ├── providers.tf
+│   │       ├── variables.tf
+│   │       └── vpc.tf
+│   └── modules
+│       ├── argocd                              # Argo CD install/bootstrap module
+│       │   ├── main.tf
+│       │   ├── outputs.tf
+│       │   └── values.yaml
+│       ├── eks                                 # EKS cluster module
+│       │   ├── main.tf
+│       │   ├── outputs.tf
+│       │   └── variables.tf
+│       ├── iam                                 # IAM roles/policies module
+│       │   ├── main.tf
+│       │   ├── outputs.tf
+│       │   └── variables.tf
+│       ├── iceberg                             # Iceberg data lake module (Glue catalog, S3, IRSA)
+│       │   ├── glue.tf
+│       │   ├── irsa.tf
+│       │   ├── main.tf
+│       │   ├── outputs.tf
+│       │   ├── s3.tf
+│       │   └── variables.tf
+│       └── vpc                                 # Network (VPC, subnets, routing) module
+│           ├── main.tf
+│           ├── outputs.tf
+│           └── variables.tf
 
 ```
 
@@ -229,7 +233,7 @@ Live debugging (Pixie in-cluster).
 
 ## 🖥️ CDC Verification
 
-![Argo CD UI Applications](screenshots/argocd.png)
+![Argo CD UI Applications](/Users/thomasnichols/IdeaProjects/wal-cdc-platform/screenshots/arcd2.png)
 
 
 ### **1. PostgreSQL WAL Settings**
