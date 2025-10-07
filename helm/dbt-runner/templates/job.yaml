@@ -25,12 +25,11 @@ spec:
           args:
             - |
               set -e
-              apk add --no-cache git ca-certificates openssh
-              git clone --depth=1 --filter=blob:none \
-                --branch {{ .Values.source.revision | default "HEAD" }} \
-                {{ .Values.source.repoURL }} /work/src
+              apk add --no-cache git ca-certificates
+              git clone --depth=1 --filter=blob:none {{ .Values.source.repoURL }} /work/src
               mkdir -p /work/dbt
               cp -r /work/src/{{ .Values.source.subPath }}/. /work/dbt/
+              test -f /work/dbt/dbt_project.yml || { echo "dbt_project.yml not found"; exit 1; }
           volumeMounts:
             - name: workdir
               mountPath: /work
