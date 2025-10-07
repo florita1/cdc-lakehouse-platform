@@ -10,7 +10,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: sql-client
-          image: flink:1.17.2
+          image: ghcr.io/florita1/flink-iceberg:1.17
           command: ["/bin/sh","-lc"]
           args:
             - |
