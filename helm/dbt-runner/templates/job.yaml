@@ -64,7 +64,8 @@ spec:
               value: /work/profiles
           workingDir: /work/dbt
           command: ["/bin/sh","-lc"]
-          args: |
+          args:
+          - |
             set -e
             python -m pip install --no-cache-dir --upgrade pip
             # Keep core/adapter majors aligned
