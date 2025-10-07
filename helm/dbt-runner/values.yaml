@@ -8,6 +8,6 @@ secrets:
   name: clickhouse-secret
 
 source:
-  repoURL: ""
-  revision: "HEAD"
-  subPath: "dbt"
+  repoURL: https://github.com/florita1/wal-cdc-platform.git
+  revision: HEAD
+  subPath: dbt

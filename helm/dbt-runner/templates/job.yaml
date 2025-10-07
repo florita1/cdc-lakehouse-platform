@@ -1,10 +1,20 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "dbt-runner.fullname" . | default "dbt-build" }}
+  name: {{ .Release.Name }}-dbt-build
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    argocd.argoproj.io/sync-options: Replace=true
 spec:
   backoffLimit: 0
+  ttlSecondsAfterFinished: 600
   template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       restartPolicy: Never
 
@@ -14,10 +24,12 @@ spec:
           command: ["/bin/sh","-lc"]
           args:
             - |
-              set -euo pipefail
-              git clone --depth=1 {{ .Values.source.repoURL }} /work/src
+              set -e
+              git clone --depth=1 --filter=blob:none \
+                --branch {{ .Values.source.revision | default "HEAD" }} \
+                {{ .Values.source.repoURL }} /work/src
               mkdir -p /work/dbt
-              cp -r /work/src/{{ .Values.source.subPath }}/* /work/dbt/
+              cp -r /work/src/{{ .Values.source.subPath }}/. /work/dbt/
           volumeMounts:
             - name: workdir
               mountPath: /work
@@ -64,7 +76,6 @@ spec:
                     connect_timeout: 10
                     retries: 3
               EOF
-              dbt --version
               dbt deps || true
               dbt build --profiles-dir /work/profiles --project-dir /work/dbt --target prod
           volumeMounts:
