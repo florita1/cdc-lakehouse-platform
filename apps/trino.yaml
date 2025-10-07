@@ -69,7 +69,7 @@ spec:
         additionalCatalogs:
           clickhouse: |
             connector.name=clickhouse
-            connection-url=jdbc:clickhouse://clickhouse.clickhouse.svc.cluster.local:8123
+            connection-url=jdbc:clickhouse://clickhouse-clickhouse.clickhouse.svc.cluster.local:8123
             connection-user=ingest
             connection-password=${ENV:CH_PASSWORD}
           iceberg: |
